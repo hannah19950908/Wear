@@ -95,4 +95,14 @@ public class UserService {
         }
         return accountNumber;
     }
+    public boolean mail(String accountNumber) {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setAccountNumber(accountNumber);
+        if (userDao.findByExample(userEntity).isEmpty()) {
+            return false;
+        }
+
+        userDao.sendSimpleEmail(userEntity);
+        return true;
+    }
 }

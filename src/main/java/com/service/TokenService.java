@@ -19,9 +19,10 @@ public class TokenService {
         this.tokenDao = tokenDao;
     }
 
-    public String generateToken(String accoutNumber){
+    public String generateToken(String accountNumber){
         String token= UUID.randomUUID().toString().replace("-","");
-        tokenDao.put(token,accoutNumber);
+        tokenDao.put(token,accountNumber);
+        tokenDao.put(accountNumber,token);
         return token;
     }
 
@@ -29,6 +30,11 @@ public class TokenService {
         String accountNumber=tokenDao.get(token);
         if (accountNumber == null) throw new TokenException();
         return accountNumber;
+    }
+
+    public String getToken(String accountNumber) throws TokenException{
+        String token=tokenDao.get(accountNumber);
+        return token;
     }
 
     public void delete(String token){

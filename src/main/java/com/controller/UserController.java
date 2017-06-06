@@ -33,15 +33,22 @@ public class UserController {
     @RequestMapping(value = "token", method = RequestMethod.POST)
     public String login(@RequestBody String mapString) throws Exception {
         Map map = JSONUtils.parseMap(mapString);
+        //用户重复登录的时候，需不需要考虑token已经存在的情况
+        //如果需要的话 可以考虑在generateToken的时候 在redis中插入accountNumber-token 方便倒排
         String accountNumber = (String) map.get("accountNumber");
         String password = Md5Encoder((String) map.get("password"));
         map.remove("password");
-        UserEntity userEntity = userService.findByAccountNumberAndPassword(accountNumber, password);
-        if (userEntity == null) {
-            throw new AuthenticationException();
-        } else {
-            map.put("token", tokenService.generateToken(accountNumber));
+        String token=tokenService.getToken(accountNumber);
+        if(token ==null)
+        {
+            UserEntity userEntity = userService.findByAccountNumberAndPassword(accountNumber, password);
+            if (userEntity == null) {
+                throw new AuthenticationException();
+            } else {
+                map.put("token", tokenService.generateToken(accountNumber));
+            }
         }
+        else map.put("token", token);
         return JSONUtils.toJSON(map);
     }
 
@@ -57,13 +64,10 @@ public class UserController {
         String relativePhone = (String) map.get("relativePhone");
         String email = (String) map.get("email");
         if (userService.addByInformation(accountNumber, password, userName, phone, relativeName, relativePhone, email))
-            map.put("token", tokenService.generateToken(accountNumber))
-        ;
-        else //这里userService已经注册用户了，操作不成功，需要删除用户
-        {
-            userService.deleteByAccountNumber(accountNumber);
-            throw new UserSetupException();
-        }
+            //这里userService已经注册用户了，如果generateToken操作不成功，需不需要删除用户？
+            map.put("token", tokenService.generateToken(accountNumber));
+        else throw new UserSetupException();
+
         return JSONUtils.toJSON(map);
     }
 
@@ -108,4 +112,12 @@ public class UserController {
         tokenService.delete(token);
         if (!userService.deleteByAccountNumber(accountNumber)) throw new RuntimeException();
     }
+
+    @RequestMapping(value = "{token}/mail", method = RequestMethod.GET)
+    public void mail(@PathVariable String token) throws Exception {
+        String accountNumber = tokenService.getAccountNumber(token);
+        tokenService.delete(token);
+        if (!userService.deleteByAccountNumber(accountNumber)) throw new RuntimeException();
+    }
+
 }
